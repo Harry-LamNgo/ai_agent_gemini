@@ -22,13 +22,5 @@ def test() -> None:
     print(result)
     print("")
 
-    result = get_files_info("calculator", "main.py")
-    print("Result for 'main.py':")
-    print(result)
-
-
 if __name__ == "__main__":
     test()
-
-
-
