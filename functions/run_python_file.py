@@ -1,5 +1,6 @@
 import os
 import subprocess
+from google.genai import types
 
 def run_python_file(
         working_directory: str, file_path: str, args: list[str] | None = None
@@ -48,3 +49,27 @@ def run_python_file(
         return "\n".join(output_string)
     except Exception as e:
         return f'Error: executing Python file: {e}'
+    
+
+# Schema of run_python_file
+
+schema_run_python_file = types.FunctionDeclaration(
+    name="run_python_file",
+    description="Executes a specified python file within a specified working directory, catching errors and console output with a strict 30-second execution timeout",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="The relative path or filename of the Python file to execute",
+            ),
+            "args": types.Schema(
+                type=types.Type.ARRAY,
+                items=types.Schema(type=types.Type.STRING),
+                description="Optional list of command-line arguments. Omits if none are needed"
+            ),
+        },
+        required=["file_path"],
+    )
+    
+)

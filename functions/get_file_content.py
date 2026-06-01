@@ -1,4 +1,5 @@
 import os
+from google.genai import types
 
 ### ---------------------------------------
 # You only need those lines of code when run project from subdir or not root dir of project -- because sys.path is not include the root dir project
@@ -38,6 +39,22 @@ def get_file_content(working_directory: str, file_path: str) -> str:
     except Exception as e:
         return f'Error: {e}'
         
-
 ## Reason of MAX_CHARS and if f.read(1)
 # limit the content of files that chatbot read --> if it read too much information --> mean spend more token API --> Free tier hit the limit
+
+# Schema of get_file_content
+
+schema_get_file_content = types.FunctionDeclaration(
+    name="get_file_content",
+    description=f"Retrieves the text content of target file path relative to the working directory, enforcing safety boundaries and truncating the output if it exceeds {MAX_CHARS} characters",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="target file path to read the content from, relative to the working directory",
+            ),
+        },
+        required=["file_path"]
+    ),
+)
