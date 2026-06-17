@@ -1,4 +1,5 @@
 import os
+import sys
 import argparse
 from dotenv import load_dotenv
 from google import genai
@@ -6,6 +7,7 @@ from google.genai import types
 
 from prompts import system_prompt
 from call_function import available_functions, call_function
+from config import MAX_ITERS
 
 
 def main():
@@ -28,11 +30,22 @@ def main():
 
     if args.verbose:
         print(f"User prompt: {args.user_prompt}\n")
-    content_generated(client, messages, args.verbose)
+    
+    # Create a loop (loops for Agent to find the result - depend on how many tokens you have with AI account - in this case I used 20 loops only)
+    for _ in range(MAX_ITERS):
+        # Call the model, handle the response
+        final_result = content_generated(client, messages, args.verbose)
+        if final_result:
+            print("Final Response: ")
+            print(final_result.text)
+            return
+    print(f"The AI agent has reached the maximum iterartion ({MAX_ITERS}) - Cannot find the final Answer")
+    sys.exit(1)
+        
 
 
 
-def content_generated(client, messages, verbose):
+def content_generated(client: genai.Client, messages: list[types.Content], verbose: bool) -> str | None:
 
     response = client.models.generate_content(
         model='gemini-2.5-flash',
@@ -45,12 +58,24 @@ def content_generated(client, messages, verbose):
     # This is to guard whenever the Object-usage_metadata from Gemini is empty or None type
     if not response.usage_metadata:
         raise RuntimeError("Gemini API response appears to be malformed")
-    
+
     if verbose:
         print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
         print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
-        
-    function_response: list[types.Part] = []
+
+    # Check if the response from AI has .candidates property
+    # - if yes, iterate through candidates and append the candidate.content to message for Agent to keep track the conversation
+    if response.candidates:
+        for response_candidate in response.candidates:
+            if response_candidate.content:
+                messages.append(response_candidate.content)
+
+    # Check if function_calls of response is None
+    # - if there is no function_calls - then return
+    if not response.function_calls:
+        return response
+
+    function_responses: list[types.Part] = []
     if response.function_calls:
         for function_call in response.function_calls:
             # call_function - AI run the function need to run
@@ -65,12 +90,11 @@ def content_generated(client, messages, verbose):
             if verbose:
                 print(f"-> {result.parts[0].function_response.response}")
 
-            function_response.append(result.parts[0])
+            function_responses.append(result.parts[0])
         
-    else:
-        print("Response: ")
-        print(response.text)
-
+        # Each time function_call runs, add the content of answer to message for Agent to keep track
+        messages.append(types.Content(role="user", parts=function_responses))
+    
 
 if __name__ == "__main__":
     main()
